@@ -7,8 +7,8 @@ export function aabb(a, b) {
   );
 }
 
-// Resolves entity against solid platforms. Updates onGround.
-// Call AFTER applying velocity (entity.x += entity.vx, etc.).
+// Resolves entity against solid platforms.
+// Platforms with oneWay:true only block from above (player can jump through from below).
 export function resolvePlatforms(entity, platforms) {
   entity.onGround = false;
 
@@ -16,16 +16,26 @@ export function resolvePlatforms(entity, platforms) {
     if (!p.solid) continue;
     if (!aabb(entity, p)) continue;
 
-    const ol = (entity.x + entity.w) - p.x;       // overlap left
-    const or_ = (p.x + p.w) - entity.x;            // overlap right
-    const ot = (entity.y + entity.h) - p.y;        // overlap top
-    const ob = (p.y + p.h) - entity.y;             // overlap bottom
+    if (p.oneWay) {
+      // Only land on top when falling; never push up or sideways.
+      const overlapTop = (entity.y + entity.h) - p.y;
+      if (overlapTop > 0 && overlapTop < entity.h * 0.6 && entity.vy >= 0) {
+        entity.y       = p.y - entity.h;
+        entity.vy      = 0;
+        entity.onGround = true;
+      }
+      continue;
+    }
 
-    // Resolve on the axis of minimum penetration
+    const ol  = (entity.x + entity.w) - p.x;
+    const or_ = (p.x + p.w) - entity.x;
+    const ot  = (entity.y + entity.h) - p.y;
+    const ob  = (p.y + p.h) - entity.y;
+
     if (Math.min(ot, ob) < Math.min(ol, or_)) {
       if (ot < ob && entity.vy >= 0) {
-        entity.y  = p.y - entity.h;
-        entity.vy = 0;
+        entity.y       = p.y - entity.h;
+        entity.vy      = 0;
         entity.onGround = true;
       } else if (entity.vy < 0) {
         entity.y  = p.y + p.h;
@@ -33,10 +43,10 @@ export function resolvePlatforms(entity, platforms) {
       }
     } else {
       if (ol < or_) {
-        entity.x  = p.x - entity.w;
+        entity.x = p.x - entity.w;
         if (entity.vx > 0) entity.vx = 0;
       } else {
-        entity.x  = p.x + p.w;
+        entity.x = p.x + p.w;
         if (entity.vx < 0) entity.vx = 0;
       }
     }
