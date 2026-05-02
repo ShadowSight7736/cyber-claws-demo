@@ -525,7 +525,7 @@ export default function App() {
     <div style={styles.wrapper}>
       <canvas ref={canvasRef} width={VIEW_W} height={VIEW_H} style={styles.canvas} />
       <div style={styles.bar}>
-        A/D move · W/Space jump · Numpad1 attack · Shift dash · Q shield · R restart
+        A/D move · W/Space jump · Numpad1 attack · Shift dash · Numpad2 shield · R restart
       </div>
     </div>
   );

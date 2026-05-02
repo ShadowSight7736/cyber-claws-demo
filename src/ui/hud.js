@@ -45,7 +45,7 @@ export function drawHUD(ctx, player, viewW, levelNum) {
   _arow(ctx, 22, 183, ab.dash,   '[SHF]  Cyber Dash');
   _arow(ctx, 22, 198, ab.hover,  '[W/SPC] Hover');
   // Shield row with cooldown bar
-  _arow(ctx, 22, 213, ab.shield, '[Q]    Shield');
+  _arow(ctx, 22, 213, ab.shield, '[NUM2]  Shield');
   if (ab.shield) {
     if (player.isShielded) {
       ctx.fillStyle = '#00ffcc'; ctx.font = '8px monospace';
@@ -116,7 +116,7 @@ export function drawIntroScreen(ctx, viewW, viewH, tick) {
   lines.forEach((l, i) => ctx.fillText(l, viewW/2, viewH/2 - 22 + i * 18));
 
   ctx.font = '11px monospace'; ctx.fillStyle = '#38225a';
-  ctx.fillText('A/D move  ·  W/Space jump  ·  Numpad1 attack  ·  Shift dash  ·  Q shield  ·  R restart', viewW/2, viewH/2+88);
+  ctx.fillText('A/D move  ·  W/Space jump  ·  Numpad1 attack  ·  Shift dash  ·  Numpad2 shield  ·  R restart', viewW/2, viewH/2+88);
 
   if (Math.floor(tick / 30) % 2 === 0) {
     ctx.font = 'bold 14px monospace'; ctx.fillStyle = '#a78bfa';

@@ -133,7 +133,7 @@ export function updatePlayer(player, keys, justPressed, worldW, worldH) {
 
   // ── Shield  (Q — 2 s invincible, 15 s cooldown) ───────────────────────────
   if (player.shieldCooldown > 0) player.shieldCooldown--;
-  if (ab.shield && (justPressed['q'] || justPressed['Q']) &&
+  if (ab.shield && justPressed['Numpad2'] &&
       player.shieldCooldown === 0 && !player.isShielded) {
     player.isShielded  = true;
     player.shieldTimer = SHIELD_DURATION;
