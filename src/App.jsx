@@ -12,8 +12,8 @@ import {
 } from './world/platforms.js';
 
 // Entities
-import { createPlayer, updatePlayer, getAttackHitbox, drawPlayer, INVINCIBLE_FRAMES } from './entities/player.js';
-import { updateEnemies, checkEnemyPlayerContact, checkAttackVsEnemies, drawEnemies, updateNovaCombat }  from './entities/enemies.js';
+import { createPlayer, updatePlayer, getAttackHitbox, drawPlayer, tryFireRanged, drawPlayerProjectiles, INVINCIBLE_FRAMES } from './entities/player.js';
+import { updateEnemies, checkEnemyPlayerContact, checkAttackVsEnemies, applyPusherForce, drawEnemies, updateNovaCombat }  from './entities/enemies.js';
 import {
   updateShards, updateHealthPacks, updateAttackBoosts,
   updateCheckpoints, checkLevelExit,
@@ -41,6 +41,7 @@ import {
 import * as L1 from './world/level1.js';
 import * as L2 from './world/level2.js';
 import * as L3 from './world/level3.js';
+import * as L4 from './world/level4.js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const VIEW_W = 900;
@@ -50,7 +51,7 @@ const FRAME_MS = 1000 / FPS;
 
 // ── Level loader ───────────────────────────────────────────────────────────────
 function buildLevelState(num, previousPlayer, spawnOverride = null) {
-  const L = num === 1 ? L1 : num === 2 ? L2 : L3;
+  const L = num === 1 ? L1 : num === 2 ? L2 : num === 3 ? L3 : L4;
 
   const spawn  = spawnOverride || L.spawnPoint;
   const player = createPlayer(spawn.x, spawn.y);
@@ -80,9 +81,9 @@ function buildLevelState(num, previousPlayer, spawnOverride = null) {
 
   // Level-specific NPCs / boss
   const nova     = num === 1 ? L.buildNova()    : null;
-  const whiskers = num === 3 ? L.buildWhiskers() : null;
+  const whiskers = num === 4 ? L.buildWhiskers() : null;
   const miniboss = num === 2 ? createMiniboss(4090, L.GROUND_Y - 50) : null;
-  const sparks   = num === 3 ? createSparks(L3.SPARKS_SPAWN.x, L3.SPARKS_SPAWN.y) : null;
+  const sparks   = num === 4 ? createSparks(L4.SPARKS_SPAWN.x, L4.SPARKS_SPAWN.y) : null;
 
   const worldW = L.WORLD_W;
   const worldH = L.WORLD_H;
@@ -108,11 +109,11 @@ function buildLevelState(num, previousPlayer, spawnOverride = null) {
     miniboss,
     sparks,
     projectiles: [],
+    playerProjectiles: [],
     camera: createCamera(VIEW_W, VIEW_H, worldW, worldH),
     worldW,
     worldH,
     groundY,
-    // drop shard after boss defeat (level 2 + 3)
     pendingShard: null,
   };
 }
@@ -284,7 +285,7 @@ export default function App() {
       //  SIMULATION
       // ══════════════════════════════════════════════════════════════
       const { player, platforms, enemies, shards, checkpoints,
-              items, decorations, nova, whiskers, projectiles } = lv;
+              items, decorations, nova, whiskers, projectiles, playerProjectiles } = lv;
 
       // R = restart current level
       if (just['r'] || just['R']) { resetToLevel(lv.num, null); prevRef.current = { ...keys }; return; }
@@ -294,9 +295,14 @@ export default function App() {
 
       // 2. Player input
       updatePlayer(player, keys, just, lv.worldW, lv.worldH);
+      const fired = tryFireRanged(player, just);
+      if (fired) playerProjectiles.push(fired);
 
       // 3. Platform collision
       resolvePlatforms(player, platforms);
+
+      // 3b. Pusher enemies repel the player (overrides vx after movement)
+      applyPusherForce(enemies, player);
 
       // 4. World-bottom death (sewer water / void)
       if (player.y > lv.worldH - 30) _respawnAtCheckpoint(player, g);
@@ -307,7 +313,7 @@ export default function App() {
       // 6. Shards
       const gotShard = updateShards(shards, player);
       if (gotShard !== null) {
-        const names = ['', 'CYBER DASH', 'HOVER', 'SHIELD'];
+        const names = ['', 'CYBER DASH', 'HOVER', 'RANGED SHOT', 'SHIELD'];
         g.notif  = { text: `✦ CORE SHARD — ${names[gotShard] || 'POWER'} UNLOCKED!`, alpha: 1 };
         g.story  = { text: _shardQuote(gotShard), alpha: 1 };
       }
@@ -319,7 +325,7 @@ export default function App() {
           ps.collected = true; ps.active = false;
           player.shards++;
           if (ps.abilityUnlock) player.abilities[ps.abilityUnlock] = true;
-          const nameMap = { hover: 'HOVER', dash: 'CYBER DASH', shield: 'SHIELD' };
+          const nameMap = { dash: 'CYBER DASH', hover: 'HOVER', ranged: 'RANGED SHOT', shield: 'SHIELD' };
           const abilityName = ps.abilityUnlock ? (nameMap[ps.abilityUnlock] || 'POWER') : 'POWER';
           g.notif = { text: `✦ CORE SHARD — ${abilityName} UNLOCKED!`, alpha: 1 };
           g.story = { text: _shardQuote(ps.id), alpha: 1 };
@@ -342,7 +348,7 @@ export default function App() {
       const hb = getAttackHitbox(player);
       if (hb) checkAttackVsEnemies(hb, enemies, player.attackDamage);
 
-      // 11. Boss logic (level 2: miniboss, level 3: Sparks)
+      // 11. Boss logic (level 2: miniboss, level 4: Sparks)
       if (lv.miniboss && lv.miniboss.alive) {
         updateMiniboss(lv.miniboss, player, platforms, projectiles, lv.worldW);
         if (checkAttackVsMiniboss(hb, lv.miniboss, player.attackDamage)) {
@@ -373,7 +379,7 @@ export default function App() {
             if (lv.bossDeathTimer === 0) {
               lv.sparks.walkingAway = true;
               lv.pendingShard = {
-                id: 3, x: lv.sparks.x + 14, y: lv.sparks.y - 40,
+                id: 4, x: lv.sparks.x + 14, y: lv.sparks.y - 40,
                 w: 22, h: 22, collected: false, active: true, t: 0, abilityUnlock: 'shield',
               };
               shards.push(lv.pendingShard);
@@ -415,8 +421,44 @@ export default function App() {
         }
       }
 
-      // 12. Projectiles
+      // 12. Boss projectiles
       updateProjectiles(projectiles, player, platforms, lv.worldW, lv.worldH);
+
+      // 12b. Player ranged projectiles
+      for (let i = playerProjectiles.length - 1; i >= 0; i--) {
+        const pp = playerProjectiles[i];
+        pp.x += pp.vx;
+        pp.lifetime++;
+        if (pp.lifetime > 110 || pp.x < 0 || pp.x > lv.worldW) {
+          playerProjectiles.splice(i, 1); continue;
+        }
+        let hit = false;
+        for (const p of platforms) {
+          if (!p.solid || p.oneWay) continue;
+          if (aabb(pp, p)) { hit = true; break; }
+        }
+        if (!hit) {
+          for (const e of enemies) {
+            if (!e.alive) continue;
+            if (aabb(pp, e)) {
+              e.hp -= 1; e.flashTimer = 10;
+              if (e.hp <= 0) e.alive = false;
+              hit = true; break;
+            }
+          }
+        }
+        if (!hit && lv.miniboss && lv.miniboss.alive && aabb(pp, lv.miniboss)) {
+          lv.miniboss.hp -= 1; lv.miniboss.flashTimer = 8;
+          if (lv.miniboss.hp <= 0) lv.miniboss.alive = false;
+          hit = true;
+        }
+        if (!hit && lv.sparks && !lv.sparks.defeated && aabb(pp, lv.sparks)) {
+          lv.sparks.hp -= 1; lv.sparks.flashTimer = 8;
+          if (lv.sparks.hp <= 0) { lv.sparks.hp = 0; lv.sparks.defeated = true; }
+          hit = true;
+        }
+        if (hit) playerProjectiles.splice(i, 1);
+      }
 
       // 13. NPCs
       if (nova) {
@@ -435,9 +477,9 @@ export default function App() {
       updateCamera(lv.camera, player);
 
       // 15. Level exit (forward)
-      // L1 → L2: always active
-      // L2 → L3: only active after Drone Commander is defeated (shard optional)
-      const exitActive = lv.num === 1 || (lv.num === 2 && lv.miniboss && !lv.miniboss.alive);
+      // L1 → L2: always  |  L2 → L3: after Drone Commander  |  L3 → L4: always
+      const exitActive = lv.num === 1 || lv.num === 3
+        || (lv.num === 2 && lv.miniboss && !lv.miniboss.alive);
       if (exitActive && checkLevelExit(lv.levelExit, player)) {
         g.phase                   = 'transition';
         g.transitionTo            = lv.num + 1;
@@ -446,7 +488,7 @@ export default function App() {
         g.transitionSpawnOverride = null;
       }
 
-      // Back exit (levels 2 and 3 only) — amber portal at left edge
+      // Back exit (levels 2–4) — amber portal at left edge
       if (lv.num > 1 && lv.levelBackExit && checkLevelExit(lv.levelBackExit, player)) {
         g.phase                   = 'transition';
         g.transitionTo            = lv.num - 1;
@@ -502,6 +544,7 @@ export default function App() {
       if (lv.miniboss) drawMiniboss(ctx, lv.miniboss, cam);
       if (lv.sparks)   drawSparks(ctx, lv.sparks, cam);
       drawProjectiles(ctx, projectiles, cam);
+      drawPlayerProjectiles(ctx, playerProjectiles, cam);
 
       // Player (on top)
       drawPlayer(ctx, player, cam);
@@ -509,7 +552,7 @@ export default function App() {
       // UI
       drawHUD(ctx, player, VIEW_W, lv.num);
       if (lv.num === 2 && lv.miniboss && lv.miniboss.alive) drawBossAlert(ctx, 'DRONE COMMANDER', VIEW_W, VIEW_H);
-      if (lv.num === 3 && lv.sparks   && !lv.sparks.defeated) drawBossAlert(ctx, 'SPARKS', VIEW_W, VIEW_H);
+      if (lv.num === 4 && lv.sparks   && !lv.sparks.defeated) drawBossAlert(ctx, 'SPARKS', VIEW_W, VIEW_H);
       if (g.notif)     drawNotification(ctx, g.notif.text,  g.notif.alpha,  VIEW_W);
       if (g.story)     drawStoryBeat(ctx,   g.story.text,   g.story.alpha,  VIEW_W, VIEW_H);
       if (g.zoneTitle?.zone) drawZoneTitle(ctx, g.zoneTitle.zone, g.zoneTitle.alpha, VIEW_W);
@@ -554,7 +597,8 @@ function _shardQuote(shardId) {
     '',
     '"Speed is just momentum with attitude."',   // shard 1 → Cyber Dash
     '"Gravity feels... optional now."',          // shard 2 → Hover
-    '"Nothing can touch me now."',               // shard 3 → Shield
+    '"Range is safety. Fire from the shadows."', // shard 3 → Ranged Shot
+    '"Nothing can touch me now."',               // shard 4 → Shield
   ][shardId] || '';
 }
 

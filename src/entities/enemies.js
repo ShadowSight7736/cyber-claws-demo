@@ -100,7 +100,7 @@ export function checkAttackVsEnemies(hitbox, enemies, damage) {
   if (!hitbox) return 0;
   let killed = 0;
   for (const e of enemies) {
-    if (!e.alive) continue;
+    if (!e.alive || e.meleeImmune) continue;
     if (aabb(hitbox, e)) {
       e.hp -= damage;
       e.flashTimer = 14;
@@ -108,6 +108,19 @@ export function checkAttackVsEnemies(hitbox, enemies, damage) {
     }
   }
   return killed;
+}
+
+// Repels the player away from any pusher-type enemies within their push range.
+export function applyPusherForce(enemies, player) {
+  for (const e of enemies) {
+    if (!e.alive || !e.pusher) continue;
+    const dx = (player.x + player.w / 2) - (e.x + e.w / 2);
+    const dy = Math.abs((player.y + player.h / 2) - (e.y + e.h / 2));
+    if (Math.abs(dx) < (e.pushRange || 70) && dy < 72) {
+      const dir = dx >= 0 ? 1 : -1;
+      player.vx = dir * (e.pushForce || 10);
+    }
+  }
 }
 
 // ── Nova vs enemy combat ───────────────────────────────────────────────────
@@ -169,6 +182,21 @@ export function drawEnemies(ctx, enemies, cam) {
     const bw = e.w, bh = e.h;
     const bodyColor = flash ? '#ff6600' : (alerted ? '#7f1d1d' : e.color);
     const edgeColor = flash ? '#ffaa00' : (alerted ? '#ef4444' : '#64748b');
+
+    // ── Pusher force-field rings ──────────────────────────────
+    if (e.pusher) {
+      const r1 = (e.pushRange || 70) * 0.52;
+      const r2 = r1 * 0.62;
+      const pulse = 0.28 + 0.18 * Math.sin(e.t * 3.2);
+      ctx.save();
+      ctx.shadowColor = '#7dd3fc'; ctx.shadowBlur = 14;
+      ctx.strokeStyle = '#7dd3fc'; ctx.lineWidth = 1.5;
+      ctx.globalAlpha = pulse;
+      ctx.beginPath(); ctx.arc(0, 0, r1, 0, Math.PI * 2); ctx.stroke();
+      ctx.globalAlpha = pulse * 0.6;
+      ctx.beginPath(); ctx.arc(0, 0, r2, 0, Math.PI * 2); ctx.stroke();
+      ctx.shadowBlur = 0; ctx.restore();
+    }
 
     // ── Treads / feet ─────────────────────────────────────────
     ctx.fillStyle = '#1e293b';

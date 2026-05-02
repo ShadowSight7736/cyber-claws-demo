@@ -28,8 +28,8 @@ export function drawHUD(ctx, player, viewW, levelNum) {
   // ── Shards ────────────────────────────────────────────────────────
   _panel(ctx, 12, 88, 148, 26);
   ctx.font = '10px monospace'; ctx.fillStyle = '#00ffcc';
-  ctx.fillText(`SHARDS  ${player.shards} / 3`, 22, 105);
-  for (let i = 0; i < 3; i++) {
+  ctx.fillText(`SHARDS  ${player.shards} / 4`, 22, 105);
+  for (let i = 0; i < 4; i++) {
     const have = player.shards > i;
     ctx.shadowColor = have ? '#00ffcc' : 'transparent'; ctx.shadowBlur = have ? 5 : 0;
     ctx.fillStyle   = have ? '#00ffcc' : '#0d2e2a';
@@ -37,23 +37,24 @@ export function drawHUD(ctx, player, viewW, levelNum) {
   }
 
   // ── Abilities ────────────────────────────────────────────────────
-  _panel(ctx, 12, 122, 210, 115);
+  _panel(ctx, 12, 122, 210, 130);
   ctx.font = '10px monospace';
-  _arow(ctx, 22, 138, true,      '[A/D]  Move',       '#443355');
-  _arow(ctx, 22, 153, true,      '[W/SPC] Jump');
-  _arow(ctx, 22, 168, ab.attack, '[NUM1] Claw Attack');
-  _arow(ctx, 22, 183, ab.dash,   '[SHF]  Cyber Dash');
-  _arow(ctx, 22, 198, ab.hover,  '[W/SPC] Hover');
+  _arow(ctx, 22, 138, true,       '[A/D]  Move',       '#443355');
+  _arow(ctx, 22, 153, true,       '[W/SPC] Jump');
+  _arow(ctx, 22, 168, ab.attack,  '[NUM1] Claw Attack');
+  _arow(ctx, 22, 183, ab.dash,    '[SHF]  Cyber Dash');
+  _arow(ctx, 22, 198, ab.hover,   '[W/SPC] Hover');
+  _arow(ctx, 22, 213, ab.ranged,  '[NUM3] Ranged Shot');
   // Shield row with cooldown bar
-  _arow(ctx, 22, 213, ab.shield, '[NUM2]  Shield');
+  _arow(ctx, 22, 228, ab.shield,  '[NUM2]  Shield');
   if (ab.shield) {
     if (player.isShielded) {
       ctx.fillStyle = '#00ffcc'; ctx.font = '8px monospace';
-      ctx.fillText('ACTIVE', 155, 213);
+      ctx.fillText('ACTIVE', 155, 228);
     } else if (player.shieldCooldown > 0) {
       const pct = 1 - player.shieldCooldown / SHIELD_COOLDOWN;
-      ctx.fillStyle = '#1e0a4e'; ctx.fillRect(22, 216, 80, 3);
-      ctx.fillStyle = '#c084fc'; ctx.fillRect(22, 216, Math.round(80 * pct), 3);
+      ctx.fillStyle = '#1e0a4e'; ctx.fillRect(22, 231, 80, 3);
+      ctx.fillStyle = '#c084fc'; ctx.fillRect(22, 231, Math.round(80 * pct), 3);
     }
   }
 
@@ -137,7 +138,8 @@ export function drawLevelTransition(ctx, viewW, viewH, alpha, levelNum) {
     ctx.font = 'bold 28px monospace'; ctx.fillStyle = '#a78bfa';
     ctx.fillText(`LEVEL  ${levelNum}`, viewW/2, viewH/2 - 10);
     ctx.font = '14px monospace'; ctx.fillStyle = '#4c1d95';
-    ctx.fillText(levelNum === 2 ? 'The Wasteland' : "Sparks' Lair", viewW/2, viewH/2+20);
+    const lvName = levelNum === 2 ? 'The Wasteland' : levelNum === 3 ? 'Signal Tower Network' : "Sparks' Lair";
+    ctx.fillText(lvName, viewW/2, viewH/2+20);
     ctx.textAlign = 'left';
   }
   ctx.restore();

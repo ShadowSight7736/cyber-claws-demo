@@ -7,14 +7,15 @@ import {
 } from '../game/physics.js';
 import { toScreen, inView } from '../game/camera.js';
 
-const COYOTE_FRAMES   = 9;
+const COYOTE_FRAMES      = 9;
 const JUMP_BUFFER_FRAMES = 12;
-const ATTACK_DURATION = 18;
-const ATTACK_COOLDOWN = 32;
-export const INVINCIBLE_FRAMES = 60;   // 1 second @ 60fps
+const ATTACK_DURATION    = 18;
+const ATTACK_COOLDOWN    = 32;
+const RANGED_COOLDOWN    = 25;
+const RANGED_SPEED       = 10;
+const RANGED_LIFETIME    = 110; // ~1.8 s at 60 fps
+export const INVINCIBLE_FRAMES = 60;
 const MAX_HEALTH = 5;
-
-// controls:  Space = jump   E = attack   Shift = dash   A/D = move
 
 export function createPlayer(x, y) {
   return {
@@ -25,9 +26,8 @@ export function createPlayer(x, y) {
     health: MAX_HEALTH,
     maxHealth: MAX_HEALTH,
     shards: 0,
-    attackDamage: 2,         // base; boosted by pickups
-    // abilities — attack always on; hover/dash/shield unlock via shards
-    abilities: { attack: true, hover: false, dash: false, shield: false },
+    attackDamage: 2,
+    abilities: { attack: true, hover: false, dash: false, ranged: false, shield: false },
     jumpsLeft: 0,
     coyoteTimer: 0,
     jumpBuffer: 0,
@@ -43,13 +43,46 @@ export function createPlayer(x, y) {
     isShielded: false,
     shieldTimer: 0,
     shieldCooldown: 0,
+    rangedCooldown: 0,
     invincibleTimer: 0,
     walkFrame: 0,
     walkTimer: 0,
-    // set by level on spawn / checkpoint
     spawnX: x,
     spawnY: y,
   };
+}
+
+// Returns a projectile object if the player fires, otherwise null.
+export function tryFireRanged(player, justPressed) {
+  if (!player.abilities.ranged) return null;
+  if (player.rangedCooldown > 0 || !justPressed['Numpad3']) return null;
+  player.rangedCooldown = RANGED_COOLDOWN;
+  return {
+    x: player.facing === 1 ? player.x + player.w + 2 : player.x - 10,
+    y: player.y + player.h / 2 - 4,
+    w: 8, h: 8,
+    vx: RANGED_SPEED * player.facing,
+    alive: true,
+    lifetime: 0,
+  };
+}
+
+export function drawPlayerProjectiles(ctx, projectiles, cam) {
+  for (const p of projectiles) {
+    if (!p.alive) continue;
+    const sx = p.x - cam.x;
+    const sy = p.y - cam.y;
+    const fade = Math.max(0.3, 1 - p.lifetime / RANGED_LIFETIME);
+    ctx.save();
+    ctx.globalAlpha = fade;
+    ctx.shadowColor = '#00ffcc'; ctx.shadowBlur = 10;
+    ctx.fillStyle = '#00ffcc';
+    ctx.beginPath(); ctx.arc(sx + 4, sy + 4, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#003322';
+    ctx.beginPath(); ctx.arc(sx + 4, sy + 4, 2, 0, Math.PI * 2); ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.restore();
+  }
 }
 
 // Call once per frame.  Gravity is applied by App.jsx BEFORE this.
@@ -57,10 +90,14 @@ export function createPlayer(x, y) {
 export function updatePlayer(player, keys, justPressed, worldW, worldH) {
   const ab = player.abilities;
 
-  // ── Ability unlocks: shard 1 = dash, shard 2 = hover, shard 3 = shield ───
+  // ── Ability unlocks: shard 1=dash, 2=hover, 3=ranged, 4=shield ──────────
   if (player.shards >= 1) ab.dash   = true;
   if (player.shards >= 2) ab.hover  = true;
-  if (player.shards >= 3) ab.shield = true;
+  if (player.shards >= 3) ab.ranged = true;
+  if (player.shards >= 4) ab.shield = true;
+
+  // ── Ranged cooldown ───────────────────────────────────────────────────────
+  if (player.rangedCooldown > 0) player.rangedCooldown--;
 
   // ── Dash ─────────────────────────────────────────────────────────────────
   if (player.dashCooldown > 0) player.dashCooldown--;
