@@ -149,7 +149,7 @@ export function updatePlayer(player, keys, justPressed, worldW, worldH) {
 
   // ── Attack  (E key) ───────────────────────────────────────────────────────
   if (player.attackCooldown > 0) player.attackCooldown--;
-  const attackJust = justPressed['e'] || justPressed['E'];
+  const attackJust = justPressed['Numpad1'];
   if (ab.attack && attackJust && player.attackCooldown === 0 && !player.isDashing) {
     player.isAttacking   = true;
     player.attackTimer   = ATTACK_DURATION;

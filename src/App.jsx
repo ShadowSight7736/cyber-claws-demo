@@ -4,7 +4,6 @@ import React, { useEffect, useRef, useCallback } from 'react';
 import { applyGravity }                    from './game/physics.js';
 import { createCamera, updateCamera }      from './game/camera.js';
 import { resolvePlatforms, aabb }          from './game/collision.js';
-import { dev, handleDevKeys, drawDevOverlay } from './game/devtools.js';
 
 // World
 import {
@@ -30,7 +29,7 @@ import {
 
 // UI
 import {
-  drawHUD, drawNotification, drawIntroScreen,
+  drawHUD, drawBossAlert, drawNotification, drawIntroScreen,
   drawLevelTransition, drawGameOver, drawVictory,
 } from './ui/hud.js';
 import {
@@ -126,6 +125,7 @@ function buildInitialState() {
     transitionAlpha: 0,
     transitionDir: 1,             // 1=fade-in, -1=fade-out
     transitionSpawnOverride: null, // { x, y } when going backward
+    savedLevels: {},              // cached level states for back-navigation
     level: buildLevelState(1, null),
     // notifications
     notif: null,      // { text, alpha }
@@ -152,9 +152,42 @@ export default function App() {
   const resetToLevel = useCallback((num, prevPlayer = null, spawnOverride = null) => {
     const g = stateRef.current;
     const player = prevPlayer || (g?.level ? g.level.player : null);
-    stateRef.current = buildInitialState();
-    stateRef.current.level = buildLevelState(num, player, spawnOverride);
-    stateRef.current.phase = 'playing';
+    const isGoingBack = spawnOverride != null;
+
+    // Build a fresh top-level state (preserving the savedLevels cache)
+    const savedLevels = { ...(g?.savedLevels || {}) };
+
+    if (isGoingBack && g?.level) {
+      // Cache the level we're leaving so returning to it is seamless
+      savedLevels[g.level.num] = g.level;
+    } else {
+      // Forward transition or explicit reset — clear saves for the destination and above
+      Object.keys(savedLevels).forEach(k => { if (Number(k) >= num) delete savedLevels[k]; });
+    }
+
+    const newState = buildInitialState();
+    newState.savedLevels = savedLevels;
+
+    if (isGoingBack && savedLevels[num]) {
+      // Restore the cached level state; update only the player's position and carried stats
+      const saved = savedLevels[num];
+      if (player) {
+        saved.player.health       = player.health;
+        saved.player.shards       = player.shards;
+        saved.player.attackDamage = player.attackDamage;
+        saved.player.abilities    = { ...player.abilities };
+      }
+      saved.player.x = spawnOverride.x;
+      saved.player.y = spawnOverride.y;
+      saved.player.vx = 0; saved.player.vy = 0;
+      saved.player.invincibleTimer = 0;
+      newState.level = saved;
+    } else {
+      newState.level = buildLevelState(num, player, spawnOverride);
+    }
+
+    newState.phase = 'playing';
+    stateRef.current = newState;
     tickRef.current = 0;
   }, []);
 
@@ -166,15 +199,14 @@ export default function App() {
       const g = stateRef.current;
       if ([' ','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
       keysRef.current[e.key] = true;
+      if (e.code?.startsWith('Numpad')) keysRef.current[e.code] = true;
 
       if (e.key === 'Enter' && g?.phase === 'intro') g.phase = 'playing';
-
-      if ((e.key === 'r' || e.key === 'R') && g && g.phase !== 'playing' && g.phase !== 'intro') {
-        const lnum = g.level?.num || 1;
-        resetToLevel(lnum, null);
-      }
     };
-    const onUp = (e) => { keysRef.current[e.key] = false; };
+    const onUp = (e) => {
+      keysRef.current[e.key] = false;
+      if (e.code?.startsWith('Numpad')) keysRef.current[e.code] = false;
+    };
 
     window.addEventListener('keydown', onDown);
     window.addEventListener('keyup',   onUp);
@@ -254,15 +286,8 @@ export default function App() {
       const { player, platforms, enemies, shards, checkpoints,
               items, decorations, nova, whiskers, projectiles } = lv;
 
-      // Dev keys
-      handleDevKeys(just, player);
-      if (dev.nextLevel) {
-        dev.nextLevel = false;
-        if (lv.num < 3) {
-          g.phase = 'transition'; g.transitionTo = lv.num + 1;
-          g.transitionAlpha = 0; g.transitionDir = 1;
-        }
-      }
+      // R = restart current level
+      if (just['r'] || just['R']) { resetToLevel(lv.num, null); prevRef.current = { ...keys }; return; }
 
       // 1. Gravity
       applyGravity(player);
@@ -481,11 +506,10 @@ export default function App() {
       // Player (on top)
       drawPlayer(ctx, player, cam);
 
-      // Dev overlay
-      drawDevOverlay(ctx, { x: cam.x, y: cam.y }, player, enemies, getAttackHitbox, lv.miniboss);
-
       // UI
       drawHUD(ctx, player, VIEW_W, lv.num);
+      if (lv.num === 2 && lv.miniboss && lv.miniboss.alive) drawBossAlert(ctx, 'DRONE COMMANDER', VIEW_W, VIEW_H);
+      if (lv.num === 3 && lv.sparks   && !lv.sparks.defeated) drawBossAlert(ctx, 'SPARKS', VIEW_W, VIEW_H);
       if (g.notif)     drawNotification(ctx, g.notif.text,  g.notif.alpha,  VIEW_W);
       if (g.story)     drawStoryBeat(ctx,   g.story.text,   g.story.alpha,  VIEW_W, VIEW_H);
       if (g.zoneTitle?.zone) drawZoneTitle(ctx, g.zoneTitle.zone, g.zoneTitle.alpha, VIEW_W);
@@ -501,8 +525,7 @@ export default function App() {
     <div style={styles.wrapper}>
       <canvas ref={canvasRef} width={VIEW_W} height={VIEW_H} style={styles.canvas} />
       <div style={styles.bar}>
-        A/D move · W/Space jump · E attack · Shift dash · R restart
-        &nbsp; | &nbsp; F1 hitboxes · F2 heal · F3 enemy sight
+        A/D move · W/Space jump · Numpad1 attack · Shift dash · Q shield · R restart
       </div>
     </div>
   );

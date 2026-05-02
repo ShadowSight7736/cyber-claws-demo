@@ -41,7 +41,7 @@ export function drawHUD(ctx, player, viewW, levelNum) {
   ctx.font = '10px monospace';
   _arow(ctx, 22, 138, true,      '[A/D]  Move',       '#443355');
   _arow(ctx, 22, 153, true,      '[W/SPC] Jump');
-  _arow(ctx, 22, 168, ab.attack, '[E]    Claw Attack');
+  _arow(ctx, 22, 168, ab.attack, '[NUM1] Claw Attack');
   _arow(ctx, 22, 183, ab.dash,   '[SHF]  Cyber Dash');
   _arow(ctx, 22, 198, ab.hover,  '[W/SPC] Hover');
   // Shield row with cooldown bar
@@ -65,8 +65,20 @@ export function drawHUD(ctx, player, viewW, levelNum) {
   ctx.fillText(`LEVEL ${levelNum}  —  AWAKENING`, viewW - 14, 40);
   ctx.textAlign = 'left';
 
-  // ── Dev mode badge ────────────────────────────────────────────────
-  // (drawn by devtools overlay if active)
+}
+
+export function drawBossAlert(ctx, bossName, viewW, viewH) {
+  const pulse = 0.7 + 0.3 * Math.sin(Date.now() * 0.005);
+  ctx.save();
+  ctx.globalAlpha = pulse;
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 11px monospace';
+  ctx.shadowColor = '#ef4444'; ctx.shadowBlur = 12;
+  ctx.fillStyle = '#ef4444';
+  ctx.fillText(`▶ DEFEAT  ${bossName}  TO PROCEED`, viewW / 2, viewH - 28);
+  ctx.shadowBlur = 0;
+  ctx.restore();
+  ctx.textAlign = 'left';
 }
 
 export function drawNotification(ctx, text, alpha, viewW) {
@@ -104,9 +116,7 @@ export function drawIntroScreen(ctx, viewW, viewH, tick) {
   lines.forEach((l, i) => ctx.fillText(l, viewW/2, viewH/2 - 22 + i * 18));
 
   ctx.font = '11px monospace'; ctx.fillStyle = '#38225a';
-  ctx.fillText('A/D move  ·  W/Space jump  ·  E attack  ·  Shift dash  ·  Q shield  ·  R restart', viewW/2, viewH/2+88);
-  ctx.font = '9px monospace'; ctx.fillStyle = '#251540';
-  ctx.fillText('[F1] hitboxes   [F2] heal   [F3] enemy sight   [F4] next level', viewW/2, viewH/2+104);
+  ctx.fillText('A/D move  ·  W/Space jump  ·  Numpad1 attack  ·  Shift dash  ·  Q shield  ·  R restart', viewW/2, viewH/2+88);
 
   if (Math.floor(tick / 30) % 2 === 0) {
     ctx.font = 'bold 14px monospace'; ctx.fillStyle = '#a78bfa';
