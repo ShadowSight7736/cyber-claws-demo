@@ -42,6 +42,7 @@ import * as L1 from './world/level1.js';
 import * as L2 from './world/level2.js';
 import * as L3 from './world/level3.js';
 import * as L4 from './world/level4.js';
+import * as L5 from './world/level5.js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const VIEW_W = 900;
@@ -51,7 +52,7 @@ const FRAME_MS = 1000 / FPS;
 
 // ── Level loader ───────────────────────────────────────────────────────────────
 function buildLevelState(num, previousPlayer, spawnOverride = null) {
-  const L = num === 1 ? L1 : num === 2 ? L2 : num === 3 ? L3 : L4;
+  const L = num === 1 ? L1 : num === 2 ? L2 : num === 3 ? L3 : num === 4 ? L4 : L5;
 
   const spawn  = spawnOverride || L.spawnPoint;
   const player = createPlayer(spawn.x, spawn.y);
@@ -81,7 +82,7 @@ function buildLevelState(num, previousPlayer, spawnOverride = null) {
 
   // Level-specific NPCs / boss
   const nova     = num === 1 ? L.buildNova()    : null;
-  const whiskers = num === 4 ? L.buildWhiskers() : null;
+  const whiskers = num === 5 ? L.buildWhiskers() : null;
   const miniboss = num === 2 ? createMiniboss(4090, L.GROUND_Y - 50) : null;
   const sparks   = num === 4 ? createSparks(L4.SPARKS_SPAWN.x, L4.SPARKS_SPAWN.y) : null;
 
@@ -467,8 +468,8 @@ export default function App() {
       }
       if (whiskers) {
         updateNPC(whiskers, player, platforms);
-        // End demo when Whiskers finishes AND Sparks is defeated (shards optional)
-        if (whiskers.done && lv.sparks && lv.sparks.defeated) {
+        // End demo when Whiskers finishes talking on level 5
+        if (whiskers.done) {
           g.phase = 'victory';
         }
       }
@@ -477,9 +478,10 @@ export default function App() {
       updateCamera(lv.camera, player);
 
       // 15. Level exit (forward)
-      // L1 → L2: always  |  L2 → L3: after Drone Commander  |  L3 → L4: always
+      // L1→L2: always | L2→L3: after Drone Commander | L3→L4: always | L4→L5: after Sparks defeated
       const exitActive = lv.num === 1 || lv.num === 3
-        || (lv.num === 2 && lv.miniboss && !lv.miniboss.alive);
+        || (lv.num === 2 && lv.miniboss && !lv.miniboss.alive)
+        || (lv.num === 4 && lv.sparks && lv.sparks.defeated);
       if (exitActive && checkLevelExit(lv.levelExit, player)) {
         g.phase                   = 'transition';
         g.transitionTo            = lv.num + 1;

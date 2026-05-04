@@ -95,29 +95,6 @@ export function buildCheckpoints() {
   ];
 }
 
-export function buildWhiskers() {
-  return {
-    x: 2780, y: 646, w: 30, h: 34,
-    lines: [
-      "YO! You actually did it!!",
-      "I knew you had it in you, Nimbus.",
-      "Heh. Nobody messes with the Cyber Claws.",
-      "The city's gonna be okay now, man.",
-      "...maybe. Probably. Let's go home.",
-    ],
-    lineIndex: 0,
-    lineTimer: 0,
-    lineDuration: 220,
-    near: false,
-    done: false,
-    startX: 2780,
-    patrolRange: 65,
-    speed: 0.5,
-    facing: -1,
-    vy: 0,
-    onGround: false,
-  };
-}
 
 export function buildDecorations() {
   return [
@@ -128,6 +105,7 @@ export function buildDecorations() {
 }
 
 export const spawnPoint    = { x: 60, y: 646 };
+export const levelExit     = { x: 3140, y: 540, w: 44, h: 140 }; // opens after Sparks defeated
 export const levelBackExit = { x: 0,   y: 556, w: 44, h: 124 };
 export const backSpawn     = { x: 3780, y: 626 }; // near level 3 exit, clear of the portal
 

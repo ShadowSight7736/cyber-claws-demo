@@ -138,7 +138,7 @@ export function drawLevelTransition(ctx, viewW, viewH, alpha, levelNum) {
     ctx.font = 'bold 28px monospace'; ctx.fillStyle = '#a78bfa';
     ctx.fillText(`LEVEL  ${levelNum}`, viewW/2, viewH/2 - 10);
     ctx.font = '14px monospace'; ctx.fillStyle = '#4c1d95';
-    const lvName = levelNum === 2 ? 'The Wasteland' : levelNum === 3 ? 'Signal Tower Network' : "Sparks' Lair";
+    const lvName = levelNum === 2 ? 'The Wasteland' : levelNum === 3 ? 'Signal Tower Network' : levelNum === 4 ? "Sparks' Lair" : 'Home Stretch';
     ctx.fillText(lvName, viewW/2, viewH/2+20);
     ctx.textAlign = 'left';
   }
