@@ -1,0 +1,11 @@
+name: cyber-claws-v1-release-alerts
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "RELEASE TRIGGERED"
