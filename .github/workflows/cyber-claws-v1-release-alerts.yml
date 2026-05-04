@@ -11,12 +11,14 @@ jobs:
     steps:
       - name: Send Discord Message
         run: |
-          VERSION="${{ github.event.release.tag_name }}"
-          TITLE="${{ github.event.release.name }}"
-          BODY="${{ github.event.release.body }}"
-          GAME_URL="https://cyber-claws-demo.vercel.app/"
+  VERSION="${{ github.event.release.tag_name }}"
+  TITLE="${{ github.event.release.name }}"
+  BODY="${{ github.event.release.body }}"
 
-          curl -H "Content-Type: application/json" \
-          -X POST \
-          -d "{\"content\":\"🚀 **New Update Released!**\n**Version:** \`${VERSION}\`\n**Title:** ${TITLE}\n\n${BODY}\n\n🔗 ${URL}\"}" \
-          ${{ secrets.DISCORD_WEBHOOK_URL }}
+  curl -H "Content-Type: application/json" \
+  -X POST \
+  -d @- ${{ secrets.DISCORD_WEBHOOK_URL }} <<EOF
+{
+  "content": "🚀 **New Update Released!**\n\n**Version:** ${VERSION}\n**Title:** ${TITLE}\n\n${BODY}\n\n🎮 Play Game: https://cyber-claws-demo.vercel.app/"
+}
+EOF
