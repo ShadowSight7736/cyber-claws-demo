@@ -1,52 +1,22 @@
 name: Cyber Claws Release Notifier
 
 on:
-  push:
-    branches:
-      - main
+  release:
+    types: [published]
 
 jobs:
-  release:
+  notify:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Check for release commit
-        id: check
+      - name: Send Discord Message
         run: |
-          MESSAGE=$(git log -1 --pretty=%B)
+          VERSION="${{ github.event.release.tag_name }}"
+          TITLE="${{ github.event.release.name }}"
+          BODY="${{ github.event.release.body }}"
+          GAME_URL="https://cyber-claws-demo.vercel.app/"
 
-          if [[ "$MESSAGE" == release:* ]]; then
-            echo "release=true" >> $GITHUB_OUTPUT
-          else
-            echo "release=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Create version
-        if: steps.check.outputs.release == 'true'
-        run: |
-          VERSION=$(date +v%Y.%m.%d.%H%M)
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-
-          git tag $VERSION
-          git push origin $VERSION
-
-      - name: Create GitHub Release
-        if: steps.check.outputs.release == 'true'
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ env.VERSION }}
-          name: Cyber Claws ${{ env.VERSION }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Send Discord
-        if: steps.check.outputs.release == 'true'
-        run: |
           curl -H "Content-Type: application/json" \
             -X POST \
-            -d "{\"content\":\"🚀 **Cyber Claws Update Released!**\n\nVersion: ${{ env.VERSION }}\n\n🎮 https://cyber-claws-demo.vercel.app/\"}" \
+            -d "{\"content\":\"🚀 New Update Released!\n\nVersion: ${VERSION}\nTitle: ${TITLE}\n\n${BODY}\n\n🎮 Play here: ${GAME_URL}\"}" \
             ${{ secrets.DISCORD_WEBHOOK_URL }}
