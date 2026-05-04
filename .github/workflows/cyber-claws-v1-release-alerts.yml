@@ -1,8 +1,9 @@
 name: Cyber Claws V1 Release Notifier
 
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - "v*"
 
 jobs:
   notify:
