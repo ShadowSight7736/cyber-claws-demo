@@ -9,16 +9,22 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Send Discord Message
-        run: |
-  VERSION="${{ github.event.release.tag_name }}"
-  TITLE="${{ github.event.release.name }}"
-  BODY="${{ github.event.release.body }}"
+    - name: Send Discord Message
+  run: |
+    VERSION="${{ github.event.release.tag_name }}"
+    TITLE="${{ github.event.release.name }}"
+    BODY="${{ github.event.release.body }}"
+    URL="${{ github.event.release.html_url }}"
 
-  curl -H "Content-Type: application/json" \
-  -X POST \
-  -d @- ${{ secrets.DISCORD_WEBHOOK_URL }} <<EOF
-{
-  "content": "🚀 **New Update Released!**\n\n**Version:** ${VERSION}\n**Title:** ${TITLE}\n\n${BODY}\n\n🎮 Play Game: https://cyber-claws-demo.vercel.app/"
-}
-EOF
+    CONTENT="🚀 New Update Released!
+Version: ${VERSION}
+Title: ${TITLE}
+
+${BODY}
+
+🎮 Play Game: https://cyber-claws-demo.vercel.app/"
+
+    curl -H "Content-Type: application/json" \
+    -X POST \
+    -d "{\"content\":\"$CONTENT\"}" \
+    ${{ secrets.DISCORD_WEBHOOK_URL }}
